@@ -33,16 +33,23 @@ export function useGalleryLayout(
     const participants = zmClient.getAllUser();
     //const testParticipants = zmClient.getUser();
     const currentUser = zmClient.getCurrentUserInfo();
+    
     const currentUserId = currentUser.userId;
+    //zmClient.changeName('abc'+participants.length,currentUserId);
     console.log("there are " + participants.length + " participants" );
-    //for(let i = 0; i<participants.length;i++){
+    currentUser.testNewAttribute = currentUser.displayName;
+    for(let i = 0; i<participants.length;i++){
     //  console.log("participants info test " + i + " " + participants[i].userId);
     //  console.log("Is this a host " + participants[i].isHost);
-      //console.log("Participant display name " + participants[i].isManager);
-    //}
-    console.log("currentuser id " + currentUser.userId);
+    //  console.log("Participant display name " + participants[i].isManager);
+    //  console.log("Testing new attribute in for loop" + participants[i].testNewAttribute);
+    }
+    
+    
+    //console.log("currentuser id " + currentUser.userId);
     console.log("currentuser display name " + currentUser.displayName);
-    console.log("Am I a host " + currentUser.isHost);
+    //console.log("Am I a host " + currentUser.isHost);
+    //console.log("Testing new attribute" + currentUser.testNewAttribute);
     // using right left flag to control right left camera to catch
     let getRightCamera = true;
     let getLeftCamera = true;
@@ -68,7 +75,10 @@ export function useGalleryLayout(
         let orderListAllIdSet: any[] = [];
         let myMeetingOrderList: any[] = [];
         let onlyshowMyselfParticipant: any[] = [];
-        
+        let listAllNameSet: any[] = [];
+        let orderListAllNameSet: any[] = [];
+        // old method sorting based on userId
+        /*
         // create a list for detecting left right camera
         for(let i = 0; i<participants.length;i++){
           orderListAllIdSet.push(participants[i]);
@@ -154,6 +164,83 @@ export function useGalleryLayout(
         if(RightCamera){
           pageParticipants = onlyshowMyselfParticipant;
         }
+        */
+       var currentUserDisplayName = currentUser.displayName.toUpperCase();
+       for(let i = 0; i<participants.length;i++){
+        orderListAllIdSet.push(participants[i]);
+
+         let participantName = participants[i].displayName.toUpperCase();
+         let newParticipantName;
+         if(participantName.includes('LEFT')){
+           newParticipantName = participantName.replace('LEFT','');
+         }
+         else if(participantName.includes('RIGHT')){
+          newParticipantName = participantName.replace('RIGHT','');
+         }
+        if(!listAllNameSet.includes(newParticipantName)){
+          listAllNameSet.push(newParticipantName);
+        }
+        if(participants[i].userId === currentUser.userId){
+          onlyshowMyselfParticipant.push(participants[i]);
+        }
+       }
+       orderListAllNameSet = listAllNameSet.sort();
+
+       if(currentUserDisplayName.includes('LEFT')){
+        
+        var currentSeatNumber = 0;
+        var currentUserDisplayNameUpper = currentUserDisplayName.toUpperCase();
+        var newCurrentUserDisplayName = currentUserDisplayNameUpper.replace('LEFT','');
+        for(let i = 0; i<orderListAllNameSet.length;i++){
+          if(orderListAllNameSet[i].includes(newCurrentUserDisplayName)){
+            currentSeatNumber = i;
+            break;
+          }
+        }
+        console.log('orderListAllNameSet.length = ' + orderListAllNameSet.length);
+        console.log('I am '+ newCurrentUserDisplayName+ ' and seat number' +currentSeatNumber);
+        // brute force method to get right camera of the next participant and left camera of the next next participant
+        
+        var getNextParticipantRightCameraSeatNumber = currentSeatNumber + 1;
+        if(getNextParticipantRightCameraSeatNumber >= orderListAllNameSet.length){
+          getNextParticipantRightCameraSeatNumber = 0;
+        }
+        var NextParticipantName = orderListAllNameSet[getNextParticipantRightCameraSeatNumber];
+        console.log('my next participant is ' + NextParticipantName);
+
+        // search from the participant set to get the correct right camera
+        for(let i = 0; i<participants.length;i++){
+          let participantName = participants[i].displayName.toUpperCase();
+          if(participantName.includes(NextParticipantName) && participantName.includes('RIGHT')){
+            console.log('find the right camera, should appear only once!');
+            myMeetingOrderList.push( participants[i]);
+            break;
+          }
+        }
+        var getNextParticipantLeftCameraSeatNumber = getNextParticipantRightCameraSeatNumber + 1;
+        if(getNextParticipantLeftCameraSeatNumber >= orderListAllNameSet.length){
+          getNextParticipantLeftCameraSeatNumber = 0;
+        }
+        var NextnextParticipantName = orderListAllNameSet[getNextParticipantLeftCameraSeatNumber];
+        console.log('my next next participant is ' + NextnextParticipantName);
+
+        // search from the participant set to get the correct left camera
+        for(let i = 0; i<participants.length;i++){
+          let participantName = participants[i].displayName.toUpperCase();
+          if(participantName.includes(NextnextParticipantName) && participantName.includes('LEFT')){
+            console.log('find the left camera, should appear only once!');
+            myMeetingOrderList.push( participants[i]);
+            break;
+          }
+        }
+
+        pageParticipants = myMeetingOrderList;
+       }
+       
+
+       if(currentUserDisplayName.includes('RIGHT')){
+        pageParticipants = onlyshowMyselfParticipant;
+       }
 		//const test1 = participants.slice(1);
 		//test1.shift();
 		//pageParticipants = test1;
@@ -192,3 +279,4 @@ export function useGalleryLayout(
     layout,
   };
 }
+
