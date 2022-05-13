@@ -11,3 +11,6 @@ In elements, please find the video container inside div class = "video-container
 you could drag video-container above share-container to change left or right (based on how you want the participant to be placed at right or left)
 
 inside Styles, find .viewport .video-container, you can change from width:100% up to 500% (or adjust based on the browser resolution)
+
+To test three people prototype, please find the config file (src/config/dev) and change the name into something as JeffLeft, AmandaRight (which is name + Left/right) before EACH log in (localhost:3000 in the browser tab). System will log in as the user name you assigned.
+
