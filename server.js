@@ -8,11 +8,20 @@ const io = socketIO(server);
 
 const PORT = process.env.PORT || 3000;
 
+let userOrder = [];
+
 // Serve static files (e.g., HTML, CSS, JavaScript)
 app.use(express.static(__dirname + '/public'));
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
+
+    // Add the new user to the userOrder array
+    userOrder.push(socket.id);
+
+
+    // Notify all users about the updated user order
+    io.emit('update-user-order', userOrder, socket.id);
 
     // When a user joins a room
     socket.on('join-room', (room) => {

@@ -7,6 +7,10 @@ let localStream;
 let peerConnections = {};  // Store peer connections for all other users
 const socket = io();  // Connect to the signaling server
 
+let userOrder;
+let positionSet = false;
+let positon;
+
 const configuration = {
     iceServers: [
         {
@@ -81,6 +85,18 @@ function joinRoom() {
     socket.emit('join-room', room);
 }
 
+// Listen for the updated user order from the server
+socket.on('update-user-order', (newUserOrder, socketId) => {
+    userOrder = newUserOrder;
+    if (!positionSet) {
+        positionSet = true;
+        position = userOrder.length - 1;
+        console.log('Position: '+ position);
+    }
+    console.log('Updated user order:', userOrder);
+    // Optionally update the UI with the new user order
+});
+
 socket.on('new-user', (socketId) => {
     // A new user joined the room, create a connection to them
     createPeerConnection(socketId, true);  // `true` because we are initiating the connection
@@ -88,6 +104,7 @@ socket.on('new-user', (socketId) => {
 
 socket.on('offer', async (offer, socketId) => {
     console.log(`Received offer from ${socketId}`);
+
     await createPeerConnection(socketId, false);  // `false` because we are responding to the offer
     await peerConnections[socketId].setRemoteDescription(new RTCSessionDescription(offer));
     
@@ -120,11 +137,73 @@ socket.on('user-disconnected', (socketId) => {
     }
 });
 
+function pickCamera(userToConnectToId) {
+    // Find the current user position
+    let positionToConnectTo = 0;
+    while (userOrder[positionToConnectTo] !== userToConnectToId) {
+        positionToConnectTo++;
+    }
+
+    console.log('Pair: ' + position + ' ' + positionToConnectTo);
+
+    if (position == 0 && positionToConnectTo == 1) {
+        return false;
+    } else if (position == 0 && positionToConnectTo == 2) {
+        return true;
+    } else if (position == 1 && positionToConnectTo == 0) {
+        return true;
+    } else if (position == 1 && positionToConnectTo == 2) {
+        return false;
+    } else if (position == 2 && positionToConnectTo == 0) {
+        return false;
+    } else if (position == 2 && positionToConnectTo == 1) {
+        return true;
+    }
+
+}
+
+function rearrangeVideoGrid() {
+    const videoContainers = document.querySelectorAll('.video-container');
+
+    if (videoContainers.length === 2) {
+        // Separate video containers based on whether they contain 'left' or 'right' in their inner text
+        const leftContainers = [];
+        const rightContainers = [];
+    
+        videoContainers.forEach(videoContainer => {
+            const labelText = videoContainer.querySelector('.video-label').innerText;
+    
+            if (labelText.includes('true')) {
+                leftContainers.push(videoContainer);
+            } else if (labelText.includes('false')) {
+                rightContainers.push(videoContainer);
+            }
+        });
+    
+        // Remove existing video containers from the grid
+        while (videoGrid.firstChild) {
+            videoGrid.firstChild.remove();
+        }
+    
+        // Append left containers first, then right containers
+        leftContainers.forEach(container => videoGrid.appendChild(container));
+        rightContainers.forEach(container => videoGrid.appendChild(container));
+    }
+    
+}
+
 async function createPeerConnection(socketId, isInitiator) {
     peerConnections[socketId] = new RTCPeerConnection(configuration);
 
+    let left = pickCamera(socketId);
+
     // Add local stream to each peer connection
-    localStream1.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream1));
+    if (left) {
+        localStream1.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream1));
+    } else {
+        localStream2.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream2));
+    }
+
 
     // When a remote stream is added, create a new video element for it
     peerConnections[socketId].ontrack = (event) => {
@@ -141,11 +220,12 @@ async function createPeerConnection(socketId, isInitiator) {
             videoContainer.classList.add('video-container');
             const videoLabel = document.createElement('p');
             videoLabel.classList.add('video-label');
-            videoLabel.innerText = remoteVideo.id;
+            videoLabel.innerText = remoteVideo.id + left;
             videoContainer.appendChild(remoteVideo);
             videoContainer.appendChild(videoLabel);
             videoGrid.append(videoContainer);  
   
+            rearrangeVideoGrid();
         }
         
         // Set the remote stream as the video source if not already set
@@ -167,6 +247,7 @@ async function createPeerConnection(socketId, isInitiator) {
         await peerConnections[socketId].setLocalDescription(offer);
         socket.emit('offer', offer, 'webrtc-room', socketId);
     }
+
 }
 
 function hangup() {
