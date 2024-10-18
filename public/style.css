@@ -1,0 +1,142 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+
+#video-grid {
+    display: flex;
+    justify-content: center;
+    position: relative;
+    flex-grow: 2;
+}
+
+#self-video-grid {
+    box-sizing: border-box;
+    content-visibility: auto;
+    height: 120px;
+    display: flex; 
+}
+
+video {
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+}
+
+.video-container {
+    position: relative;
+    height: 100%;
+  }
+  
+  .video-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    font-size: 14px;
+    padding: 5px;
+  }
+
+.main {
+    height: 100vh;
+    display: flex;
+}
+
+.main__left {
+    flex: 0.8;
+    display: flex;
+    flex-direction: column;
+}
+
+.main__right {
+    flex: 0.2;
+    display: flex;
+    flex-direction: column;
+    background-color: #242324;
+    border-left: 1px solid #3D3D42;
+}
+
+.main__videos {
+    flex-grow: 1;
+    background-color: black;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.main__controls {
+    background-color: #1C1E20;
+    color: lightgray;
+    display: flex;
+    padding: 5px;
+    justify-content: space-between;
+}
+
+.main__controls__button {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 10px;
+    min-width: 80px;
+    cursor: pointer;
+}
+
+.main__controls__button i {
+    font-size: 22px;
+    padding-bottom: 5px;
+}
+
+.main__controls__button:hover {
+    background-color: #343434;
+    border-radius: 5px;
+}
+
+.main__controls__block {
+    display: flex;
+}
+
+.leave_meeting {
+    color: salmon;
+}
+
+.main__header {
+    color: lightgrey;
+    text-align: center;
+    padding: 22px 12px;
+}
+
+.main__chat_window {
+    flex-grow: 1;
+    overflow-y: scroll;
+    overflow-wrap: anywhere;
+}
+
+.main__message_container {
+    padding: 22px 12px;
+    display: flex;
+}
+
+.main__message_container input {
+    flex-grow: 1;
+    background-color: transparent;
+    border: none;
+    color: lightgray;
+}
+
+.messages {
+    color: white;
+    list-style: none;
+}
+
+body::-webkit-scrollbar-track {
+    background: #343434;        /* color of the tracking area */
+}
+
+.unmute, .st {
+    color: salmon;
+}

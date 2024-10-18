@@ -1,5 +1,0 @@
-file change:
-
-	useGaleryLayout.ts: change the participants to cut off the current user to build the view
-
-in F12 video container in sharing : change width
