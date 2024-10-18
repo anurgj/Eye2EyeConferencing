@@ -42,8 +42,33 @@ hangupButton.onclick = hangup;
 
 async function start() {
     try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localVideo.srcObject = localStream;
+        // Get list of video input devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+        // Check if there are at least 2 video input devices
+        if (videoDevices.length >= 2) {
+            // Use the first device for localStream1
+            localStream1 = await navigator.mediaDevices.getUserMedia({ 
+                video: { deviceId: videoDevices[0].deviceId },
+                audio: true 
+            });
+
+            // Use the second device for localStream2
+            localStream2 = await navigator.mediaDevices.getUserMedia({ 
+                video: { deviceId: videoDevices[1].deviceId },
+                audio: true 
+            });
+
+        } else {
+            // If there aren't 2 cameras, just use the first one for both streams
+            localStream1 = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStream2 = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        }
+
+        // Set the video sources
+        localVideo1.srcObject = localStream1;
+        localVideo2.srcObject = localStream2;
     } catch (e) {
         console.error('Error accessing media devices.', e);
     }
@@ -99,7 +124,7 @@ async function createPeerConnection(socketId, isInitiator) {
     peerConnections[socketId] = new RTCPeerConnection(configuration);
 
     // Add local stream to each peer connection
-    localStream.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream));
+    localStream1.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream1));
 
     // When a remote stream is added, create a new video element for it
     peerConnections[socketId].ontrack = (event) => {
