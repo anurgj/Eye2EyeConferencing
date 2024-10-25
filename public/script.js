@@ -85,6 +85,34 @@ function joinRoom() {
     socket.emit('join-room', room);
 }
 
+function muteUnmute() {
+    if (!localStream1 || !localStream2) return;  // Check if streams are defined
+
+    // Get the current audio state
+    const isAudioEnabled = localStream1.getAudioTracks()[0].enabled;
+
+    // Toggle audio for both local streams
+    localStream1.getAudioTracks().forEach(track => track.enabled = !isAudioEnabled);
+    localStream2.getAudioTracks().forEach(track => track.enabled = !isAudioEnabled);
+
+    // Update the icon and text based on new audio state
+    const muteButton = document.querySelector('.main__mute_button i');
+    const muteText = document.querySelector('.main__mute_button span');
+    
+    if (isAudioEnabled) {
+        // Set to muted icon
+        muteButton.classList.replace('fa-microphone-lines', 'fa-microphone-slash');
+        muteText.textContent = 'Unmute';
+    } else {
+        // Set to unmuted icon
+        muteButton.classList.replace('fa-microphone-slash', 'fa-microphone-lines');
+        muteText.textContent = 'Mute';
+    }
+
+    console.log(`Audio ${isAudioEnabled ? 'muted' : 'unmuted'}`);
+}
+
+
 // Listen for the updated user order from the server
 socket.on('update-user-order', (newUserOrder, socketId) => {
     userOrder = newUserOrder;
@@ -186,8 +214,8 @@ function rearrangeVideoGrid() {
         }
     
         // Append left containers first, then right containers
-        leftContainers.forEach(container => videoGrid.appendChild(container));
         rightContainers.forEach(container => videoGrid.appendChild(container));
+        leftContainers.forEach(container => videoGrid.appendChild(container));
     }
     
 }
@@ -224,15 +252,32 @@ async function createPeerConnection(socketId, isInitiator) {
             videoContainer.appendChild(remoteVideo);
             videoContainer.appendChild(videoLabel);
             videoGrid.append(videoContainer);  
-  
+
             rearrangeVideoGrid();
+            
+            // Set up audio panning to the left
+            const audioContext = new AudioContext();
+            const source = audioContext.createMediaStreamSource(event.streams[0]);
+            const panner = audioContext.createStereoPanner();
+
+
+            if (!left) {
+                panner.pan.value = -1.0; // right stream, pan left
+            } else {
+                panner.pan.value = 1.0; // left stream, pan right
+            }
+            // Set the panner to the left
+
+            // Connect audio stream to panner, then to the context destination
+            source.connect(panner).connect(audioContext.destination);
         }
-        
+
         // Set the remote stream as the video source if not already set
         if (remoteVideo.srcObject !== event.streams[0]) {
             remoteVideo.srcObject = event.streams[0];
         }
     };
+
 
     // Handle ICE candidates
     peerConnections[socketId].onicecandidate = (event) => {
