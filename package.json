@@ -1,0 +1,29 @@
+{
+  "name": "eye2eye-manual",
+  "version": "1.0.0",
+  "description": "eye2eye prototype",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^3.1.8",
+    "express": "^4.18.2",
+    "jquery": "^3.6.3",
+    "node": "^21.6.2",
+    "peer": "^0.6.1",
+    "puppeteer": "^22.6.2",
+    "socket.io": "^4.5.4",
+    "uuid": "^9.0.0",
+    "webtransport": "^1.0.10"
+  },
+  "engines": {
+    "node": ">=21.6.2"
+  },
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.5.5"
+  }
+}
