@@ -7,7 +7,7 @@ let localStream1;
 let localStream2;
 
 let peerConnections = {};
-const socket = io();
+const socket = io("http://10.155.4.133:3000");
 
 let userOrder;
 let positionSet = false;
@@ -284,28 +284,26 @@ document.getElementById('outputDeviceModal').addEventListener('click', (e) => {
 
 async function initializeCameraStreams() {
     try {
-        if (localStream1) {
-            localStream1.getTracks().forEach(track => track.stop());
-        }
-        if (localStream2) {
-            localStream2.getTracks().forEach(track => track.stop());
-        }
+        if (localStream1) localStream1.getTracks().forEach(track => track.stop());
+        if (localStream2) localStream2.getTracks().forEach(track => track.stop());
 
-        const constraints1 = {
-            video: selectedCameras.left ? { deviceId: selectedCameras.left } : true,
+        localStream1 = await navigator.mediaDevices.getUserMedia({
+            video: selectedCameras.left ? { deviceId: { exact: selectedCameras.left } } : true,
             audio: { echoCancellation: true }
-        };
+        });
 
-        localStream1 = await navigator.mediaDevices.getUserMedia(constraints1);
+        localStream2 = await navigator.mediaDevices.getUserMedia({
+            video: selectedCameras.right ? { deviceId: { exact: selectedCameras.right } } : true,
+            audio: false
+        });
 
-        const localVideo1 = document.getElementById('localVideo1');
+        document.getElementById('localVideo1').srcObject = localStream1;
+        const localVideo2 = document.getElementById('localVideo2');
+        if (localVideo2) localVideo2.srcObject = localStream2;
 
-        localVideo1.srcObject = localStream1;
-
-        console.log('Camera streams initialized successfully');
+        console.log('Cameras initialized:', selectedCameras);
 
         updatePeerConnections();
-
     } catch (e) {
         console.error('Error initializing camera streams:', e);
     }
