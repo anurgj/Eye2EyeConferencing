@@ -20,9 +20,6 @@
         crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-latest.js"></script>
     <script type='text/javascript' src='https://cdn.scaledrone.com/scaledrone.min.js'></script>
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="manifest" href="/site.webmanifest">
 </head>
 
@@ -35,31 +32,34 @@
                 </div>
                 <div id="self-video-grid">
                     <video id="localVideo1" class="self-video-clickable" autoplay muted></video>
-                    <video id="localVideo2" class="self-video-clickable" autoplay muted></video>
                 </div>
 
             </div>
             <div class="main__controls">
                 <div class="main__controls__block">
-                    <div onclick="muteUnmute()"class="main__controls__button main__mute_button">
+                    <div onclick="muteUnmute()" class="main__controls__button main__mute_button">
                         <i class="fa-solid fa-microphone-lines"></i>
                         <span>Mute</span>
                     </div>
-                    <div class="main__controls__button main__settings_button" id="settings_block" >
+                    <div class="main__controls__button main__settings_button" id="settings_block">
                         <i class="fa-solid fa-sliders"></i>
                         <span>Settings</span>
+                        <div id="settingsModal" class="modal">
+                            <div class="modal-content">
+                            </div>
+                        </div>
                     </div>
-                    
+
 
                 </div>
                 <div class="main__controls__block">
+                    <div class="main__controls__button">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span>Security</span>
+                    </div>
                     <div class="main__controls__button" id="participantsButton">
                         <i class="fa-solid fa-users"></i>
                         <span>Participants</span>
-                    </div>
-                    <div class="main__controls__button" id="helpButton">
-                        <i class="fa-solid fa-circle-question"></i>
-                        <span>Help</span>
                     </div>
                     <div class="main__controls__button" id="chatButton">
                         <i class="fa-solid fa-comments"></i>
@@ -109,28 +109,27 @@
             </div>
         </div>
 
-        <div id="helpModal" class="modal hidden">
-            <div class="modal-content">
-                <button id="closeHelpModal" class="close-btn">&times;</button>
-                <h6 class="main__header">Help</h6>
-                <p class="messages">
-                    Cover your leftmost camera. If the left video stream of yourself goes dark, your system is set up correctly. Otherwise, click the switch cameras button.
-                </p>
-            </div>
-        </div>
-
         <div id="outputDeviceModal" class="modal">
             <div class="modal-content">
                 <h6 class="main__header">Settings</h6>
 
-                <button id="closeOutputDeviceModal" class="close-btn" style="float: right; border: none; background: none; font-size: 20px;">&times;</button>
+                <button id="closeOutputDeviceModal" class="close-btn"
+                    style="float: right; border: none; background: none; font-size: 20px;">&times;</button>
                 <h6>Select Audio Output Device</h6>
                 <div id="outputDeviceList">
                 </div>
                 <div style="margin-top: 15px; text-align: center;">
-                    <button id="testAudioButton" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Test Audio</button>
+                    <button id="testAudioButton"
+                        style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Test
+                        Audio</button>
                 </div>
+            </div>
+        </div>
 
+        <div id="welcomeModal" class="welcome-modal" style="display: none;">
+            <div class="welcome-modal-content">
+                <p>Connect delayed audio.</p>
+                <button id="closeModalBtn" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Connect and Close</button>
             </div>
         </div>
 

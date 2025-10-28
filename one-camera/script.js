@@ -16,6 +16,18 @@ let position;
 const switchCameraButton = document.getElementById('switchCameraButton');
 let isStream1Primary = true;
 
+const pathSegments = window.location.pathname.split('/');
+const lastSegment = pathSegments[pathSegments.length - 1];
+
+let delaySetting = 0.5;
+
+if (!isNaN(lastSegment)) {
+    delaySetting = parseInt(lastSegment, 10) / 1000;
+}
+
+console.log("Delay set to", delaySetting, "seconds");
+
+
 
 // const configuration = {
 //     iceServers: [
@@ -33,34 +45,6 @@ let isStream1Primary = true;
 //     ],
 //     iceTransportPolicy: "relay",
 // };
-
-const configuration = {
-    iceServers: [
-        {
-            urls: "stun:stun.relay.metered.ca:80",
-        },
-        {
-            urls: "turn:global.relay.metered.ca:80",
-            username: "7441ca2e7cc0f1b0ffbdc41f",
-            credential: "SOTwjWXK9OdAQkgS",
-        },
-        {
-            urls: "turn:global.relay.metered.ca:80?transport=tcp",
-            username: "7441ca2e7cc0f1b0ffbdc41f",
-            credential: "SOTwjWXK9OdAQkgS",
-        },
-        {
-            urls: "turn:global.relay.metered.ca:443",
-            username: "7441ca2e7cc0f1b0ffbdc41f",
-            credential: "SOTwjWXK9OdAQkgS",
-        },
-        {
-            urls: "turns:global.relay.metered.ca:443?transport=tcp",
-            username: "7441ca2e7cc0f1b0ffbdc41f",
-            credential: "SOTwjWXK9OdAQkgS",
-        },
-    ],
-};
 
 window.onload = start;
 
@@ -107,6 +91,7 @@ const cameraModalCSS = `
 }
 
 .camera-option.selected {
+    border-color: #007bff;
     background: #e7f3ff;
     box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
 }
@@ -283,19 +268,18 @@ async function initializeCameraStreams() {
             audio: { echoCancellation: true }
         };
 
-        const constraints2 = {
-            video: selectedCameras.right ? { deviceId: selectedCameras.right } : true,
-            audio: { echoCancellation: true }
-        };
-
         localStream1 = await navigator.mediaDevices.getUserMedia(constraints1);
-        localStream2 = await navigator.mediaDevices.getUserMedia(constraints2);
 
         const localVideo1 = document.getElementById('localVideo1');
-        const localVideo2 = document.getElementById('localVideo2');
 
         localVideo1.srcObject = localStream1;
-        localVideo2.srcObject = localStream2;
+
+        // Set contentHint for screenshare-like behavior
+        const videoTrack = localStream1.getVideoTracks()[0];
+        if (videoTrack) {
+            videoTrack.contentHint = 'detail';
+            console.log('Set video track contentHint to "detail" to simulate screenshare.');
+        }
 
         console.log('Camera streams initialized successfully');
 
@@ -308,33 +292,19 @@ async function initializeCameraStreams() {
 
 function setupVideoClickListeners() {
     const localVideo1 = document.getElementById('localVideo1');
-    const localVideo2 = document.getElementById('localVideo2');
 
     localVideo1.addEventListener('click', () => {
         currentClickedVideo = 'left';
         openCameraSelectionModal();
     });
 
-    localVideo2.addEventListener('click', () => {
-        currentClickedVideo = 'right';
-        openCameraSelectionModal();
-    });
-
     localVideo1.style.cursor = 'pointer';
-    localVideo2.style.cursor = 'pointer';
 
     localVideo1.addEventListener('mouseenter', () => {
         localVideo1.style.opacity = '0.8';
     });
     localVideo1.addEventListener('mouseleave', () => {
         localVideo1.style.opacity = '1';
-    });
-
-    localVideo2.addEventListener('mouseenter', () => {
-        localVideo2.style.opacity = '0.8';
-    });
-    localVideo2.addEventListener('mouseleave', () => {
-        localVideo2.style.opacity = '1';
     });
 }
 
@@ -355,8 +325,19 @@ function insertCameraModal() {
 }
 
 async function openCameraSelectionModal() {
-    const modal = document.getElementById('cameraSelectionModal');
+    let modal = document.getElementById('cameraSelectionModal');
+    if (!modal) {
+        console.log('Modal not found, inserting it now...');
+        insertCameraModal();
+        modal = document.getElementById('cameraSelectionModal');
+    }
+    
     const cameraList = document.getElementById('cameraList');
+    
+    if (!cameraList) {
+        console.error('Camera list element not found after modal insertion');
+        return;
+    }
 
     cameraList.innerHTML = '';
 
@@ -396,7 +377,7 @@ async function openCameraSelectionModal() {
                     if (previewStream) {
                         previewStream.getTracks().forEach(track => track.stop());
                     }
-                }, 3000); 
+                }, 3000);
             });
         } catch (e) {
             console.error('Error getting camera preview:', e);
@@ -530,44 +511,6 @@ function switchCamera() {
     updatePeerConnections();
 }
 
-function addCameraLabels() {
-    const leftLabel = document.createElement('div');
-    leftLabel.style.position = 'absolute';
-    leftLabel.style.top = '5px';
-    leftLabel.style.left = '5px';
-    leftLabel.style.background = 'rgba(0,0,0,0.7)';
-    leftLabel.style.color = 'white';
-    leftLabel.style.padding = '2px 6px';
-    leftLabel.style.borderRadius = '3px';
-    leftLabel.style.fontSize = '12px';
-    leftLabel.style.zIndex = '10';
-    leftLabel.textContent = 'Left Camera';
-    leftLabel.id = 'leftCameraLabel';
-
-    const rightLabel = document.createElement('div');
-    rightLabel.style.position = 'absolute';
-    rightLabel.style.top = '5px';
-    rightLabel.style.right = '5px';
-    rightLabel.style.background = 'rgba(0,0,0,0.7)';
-    rightLabel.style.color = 'white';
-    rightLabel.style.padding = '2px 6px';
-    rightLabel.style.borderRadius = '3px';
-    rightLabel.style.fontSize = '12px';
-    rightLabel.style.zIndex = '10';
-    rightLabel.textContent = 'Right Camera';
-    rightLabel.id = 'rightCameraLabel';
-
-    const selfVideoGrid = document.getElementById('self-video-grid');
-    if (selfVideoGrid) {
-        selfVideoGrid.style.position = 'relative';
-        selfVideoGrid.appendChild(leftLabel);
-        selfVideoGrid.appendChild(rightLabel);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    addCameraLabels();
-});
 
 window.onload = start;
 
@@ -581,25 +524,63 @@ function leaveMeeting() {
 }
 
 function muteUnmute() {
-    if (!localStream1 || !localStream2) return;
+    if (!localStream1 || localStream1.getAudioTracks().length === 0) {
+        console.error('No local audio stream or audio tracks available');
+        return;
+    }
 
-    const isAudioEnabled = localStream1.getAudioTracks()[0].enabled;
+    const audioTrack = localStream1.getAudioTracks()[0];
+    const isAudioEnabled = audioTrack.enabled;
 
-    localStream1.getAudioTracks().forEach(track => track.enabled = !isAudioEnabled);
-    localStream2.getAudioTracks().forEach(track => track.enabled = !isAudioEnabled);
+    console.log('Current audio state:', isAudioEnabled ? 'enabled' : 'disabled');
+
+    localStream1.getAudioTracks().forEach(track => {
+        track.enabled = !isAudioEnabled;
+        console.log('Set audio track enabled to:', !isAudioEnabled);
+    });
+
+    if (localStream2 && localStream2.getAudioTracks().length > 0) {
+        localStream2.getAudioTracks().forEach(track => {
+            track.enabled = !isAudioEnabled;
+        });
+    }
 
     const muteButton = document.querySelector('.main__mute_button i');
     const muteText = document.querySelector('.main__mute_button span');
 
-    if (isAudioEnabled) {
-        muteButton.classList.replace('fa-microphone-lines', 'fa-microphone-slash');
-        muteText.textContent = 'Unmute';
+    if (muteButton && muteText) {
+        if (isAudioEnabled) {
+            muteButton.classList.remove('fa-microphone-lines');
+            muteButton.classList.add('fa-microphone-slash');
+            muteText.textContent = 'Unmute';
+        } else {
+            muteButton.classList.remove('fa-microphone-slash');
+            muteButton.classList.add('fa-microphone-lines');
+            muteText.textContent = 'Mute';
+        }
     } else {
-        muteButton.classList.replace('fa-microphone-slash', 'fa-microphone-lines');
-        muteText.textContent = 'Mute';
+        console.error('Mute button UI elements not found');
     }
 
     console.log(`Audio ${isAudioEnabled ? 'muted' : 'unmuted'}`);
+}
+
+function switchCamera() {
+    if (!localStream1 || !localStream2) {
+        console.error('Local streams are not initialized.');
+        return;
+    }
+
+    isStream1Primary = !isStream1Primary;
+    const newPrimaryStream = isStream1Primary ? localStream1 : localStream2;
+
+    localVideo1.srcObject = newPrimaryStream;
+
+    console.log('Switched cameras: Stream 1 is now', isStream1Primary ? 'localStream1' : 'localStream2');
+
+    const room = 'webrtc-room';
+    socket.emit('join-room', room);
+
 }
 
 socket.on('update-user-order', (newUserOrder, socketId) => {
@@ -716,101 +697,103 @@ function rearrangeVideoGrid() {
 
 }
 
-const segments = window.location.pathname.split('/');
-const lastSegment = segments[segments.length - 1];
+let connectAudio = document.getElementById('welcomeModal');
 
-let isParamOn = false;
-
-if (lastSegment === '1') {
-  isParamOn = true;
-} else if (lastSegment === '0') {
-  isParamOn = false;
-}
-
-let panAmount = 1;
-
-console.log("Param ON:", isParamOn);
-
-if (isParamOn) {
-    panAmount = 1;
-} else {
-    panAmount = 0;
-}
-
-
-
-
-const panCheckbox = document.getElementById('panCheckbox');
-
-document.getElementById('outputDeviceModal').addEventListener('transitionend', () => {
-    panCheckbox.checked = panAmount == 1;
+window.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('welcomeModal');
+    const closeBtn = document.getElementById('closeModalBtn');
+  
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
 });
-
-panCheckbox.addEventListener('change', () => {
-    panAmount = panCheckbox.checked ? 1 : 0;
-    console.log('panAmount updated to:', panAmount);
-});
-
+  
 
 async function createPeerConnection(socketId, isInitiator) {
-    peerConnections[socketId] = new RTCPeerConnection(configuration);
+    peerConnections[socketId] = new RTCPeerConnection();
 
-    let left = pickCamera(socketId);
+    localStream1.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream1));
 
-    if (left && isStream1Primary) {
-        localStream1.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream1));
-    } else if (!left && isStream1Primary) {
-        localStream2.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream2));
-    } else if (left && !isStream1Primary) {
-        localStream2.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream2));
-    } else {
-        localStream1.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream1));
-    }
+    peerConnections[socketId].ontrack = async (event) => {
+        const originalStream = event.streams[0];
+        const videoTrack = originalStream.getVideoTracks()[0];
+        const audioTrack = originalStream.getAudioTracks()[0];
 
 
-    let isPanningEnabled = true;
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-    peerConnections[socketId].ontrack = (event) => {
+      
+        const delayedVideoStream = await createDelayedVideoStream(videoTrack, delaySetting);
+      
         let remoteVideo = document.getElementById(`remoteVideo-${socketId}`);
-
+      
         if (!remoteVideo) {
-            remoteVideo = document.createElement('video');
-            remoteVideo.autoplay = true;
-            remoteVideo.muted = false;
-            remoteVideo.id = `remoteVideo-${socketId}`;
+          remoteVideo = document.createElement('video');
+          remoteVideo.autoplay = true;
+          remoteVideo.id = `remoteVideo-${socketId}`;
+          remoteVideo.classList.add('click-to-play-audio');
+      
+          const videoContainer = document.createElement('div');
+          videoContainer.classList.add('video-container');
+      
+          const labelContainer = document.createElement('div');
+          labelContainer.classList.add('label-container');
+      
+          const videoLabel = document.createElement('p');
+          videoLabel.classList.add('video-label');
+          videoLabel.innerText = remoteVideo.id;
+      
+          videoContainer.appendChild(labelContainer);
+          videoContainer.appendChild(remoteVideo);
+          videoContainer.appendChild(videoLabel);
+      
+          videoGrid.appendChild(videoContainer);
+        }
 
-            const videoContainer = document.createElement('div');
-            videoContainer.classList.add('video-container');
-
-            const isLeft = left;
-
-            const labelContainer = document.createElement('div');
-            labelContainer.classList.add('label-container');
-
-            const videoLabel = document.createElement('p');
-            videoLabel.classList.add('video-label');
-            videoLabel.innerText = `${remoteVideo.id} ${isLeft ? 'left' : 'right'}`;
-
-            videoContainer.appendChild(labelContainer);
-            videoContainer.appendChild(remoteVideo);
-            videoContainer.appendChild(videoLabel);
-            videoGrid.append(videoContainer);
-
-            rearrangeVideoGrid();
-
-            if (isPanningEnabled && event.streams[0].getAudioTracks().length > 0) {
-                const source = audioContext.createMediaStreamSource(event.streams[0]);
-                const panner = audioContext.createStereoPanner();
-                panner.pan.value = isLeft ? -1 * panAmount : 1 * panAmount;
-                source.connect(panner).connect(audioContext.destination);
+        const jitterBufferMs = delaySetting * 1000;
+        console.log(`Setting jitterBufferTarget to ${jitterBufferMs}ms for incoming stream from ${socketId}`);
+        
+        const receivers = peerConnections[socketId].getReceivers();
+        for (const receiver of receivers) {
+            if (receiver.track === event.track) {
+                // The jitterBufferTarget attribute is only available on RTCRtpReceiver
+                try {
+                    // jitterBufferTarget is a hint, not a strict command
+                    receiver.jitterBufferTarget = jitterBufferMs;
+                } catch (e) {
+                    console.warn('Could not set jitterBufferTarget. This browser may not support it.', e);
+                }
+                break;
             }
         }
+      
+        const delayedStream = new MediaStream();
+        delayedVideoStream.getVideoTracks().forEach(track => delayedStream.addTrack(track));
+        delayedStream.addTrack(audioTrack)
+        
+        remoteVideo.srcObject = delayedStream;
 
-        if (remoteVideo.srcObject !== event.streams[0]) {
-            remoteVideo.srcObject = event.streams[0];
-        }
-    };
+        remoteVideo.muted = true;
+      
+        connectAudio.style.display = 'flex';
+        connectAudio.onclick = async () => {
+          try {
+            
+            const remoteAudioTrack = originalStream.getAudioTracks()[0];
+            const delayedAudioStream = await createDelayedAudioStream(remoteAudioTrack, delaySetting);
+            
+            const audioElement = new Audio();
+            audioElement.srcObject = delayedAudioStream;
+            audioElement.play();
+            
+            
+            console.log('Delayed audio started');
+          } catch (e) {
+            console.error('Failed to play delayed audio:', e);
+          }
+        };
+      };
+      
+      
+
 
 
 
@@ -825,8 +808,79 @@ async function createPeerConnection(socketId, isInitiator) {
         await peerConnections[socketId].setLocalDescription(offer);
         socket.emit('offer', offer, 'webrtc-room', socketId);
     }
-
 }
+
+async function createDelayedAudioStream(audioTrack, delaySeconds = 2) {
+    const audioContext = new AudioContext();
+
+    if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+    }
+
+    const inputStream = new MediaStream([audioTrack]);
+
+    const audioElement = new Audio();
+    audioElement.srcObject = inputStream;
+    audioElement.muted = true;
+    await audioElement.play().catch(err => console.warn("Muted remote audio element failed to play", err));
+
+    const source = audioContext.createMediaStreamSource(inputStream);
+    const delayNode = audioContext.createDelay(5.0);
+    delayNode.delayTime.setValueAtTime(delaySeconds, audioContext.currentTime);
+
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = 1.0;
+
+    const destination = audioContext.createMediaStreamDestination();
+
+    source.connect(delayNode);
+    delayNode.connect(gainNode);
+    gainNode.connect(destination);
+
+    return destination.stream;
+}
+
+
+  
+
+
+async function createDelayedVideoStream(videoTrack, delaySeconds) {
+    const processor = new MediaStreamTrackProcessor({ track: videoTrack });
+
+    const generator = new MediaStreamTrackGenerator({ kind: 'video' });
+
+    const delayStream = new TransformStream({
+        start(controller) {
+            this.frameBuffer = [];
+        },
+        transform(videoFrame, controller) {
+            const now = performance.now();
+
+            this.frameBuffer.push({ frame: videoFrame, timestamp: now });
+
+            while (this.frameBuffer.length > 0) {
+                const oldestFrame = this.frameBuffer[0];
+                if (now - oldestFrame.timestamp >= (delaySeconds * 1000)) {
+                    const processedFrame = this.frameBuffer.shift().frame;
+                    controller.enqueue(processedFrame);
+                } else {
+                    break;
+                }
+            }
+        },
+        flush(controller) {
+            this.frameBuffer.forEach(item => item.frame.close());
+        }
+    });
+
+    processor.readable
+        .pipeThrough(delayStream)
+        .pipeTo(generator.writable);
+
+    return new MediaStream([generator]);
+}
+
+
 
 const chatInput = document.getElementById("chat_message");
 const messagesList = document.querySelector(".messages");
@@ -891,8 +945,8 @@ function updateParticipantsList() {
     let counter = 0;
 
     const videoContainers = document.querySelectorAll('.video-container');
-    const leftUser = document.querySelector('.leftuser');
-    const rightUser = document.querySelector('.rightuser');
+    const leftUser = document.querySelector('.leftuser'); 
+    const rightUser = document.querySelector('.rightuser'); 
 
     leftUser.innerHTML = "";
     rightUser.innerHTML = "";
@@ -934,25 +988,26 @@ document.getElementById('closeParticipantsModal').addEventListener('click', func
 });
 
 
-const helpButton = document.getElementById("helpButton");
-const helpModal = document.getElementById("helpModal");
 
-helpButton.addEventListener("click", () => {
-    if (helpModal.classList.contains("hidden")) {
-        helpModal.classList.remove("hidden");
-        helpModal.style.display = "block";
-    } else {
-        helpModal.classList.add("hidden");
-        helpModal.style.display = "none";
-    }
-});
+let isPanningEnabled = true;
+let audioContext = new AudioContext();
 
 
-document.getElementById('closeHelpModal').addEventListener('click', function () {
-    helpModal.classList.add('hidden');
-    helpModal.style.display = "none";
+function stopPanning() {
+    isPanningEnabled = false;
 
-});
+    const remoteVideos = document.querySelectorAll('.video-container video');
+    remoteVideos.forEach(remoteVideo => {
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(remoteVideo.srcObject);
+        const panner = audioContext.createStereoPanner();
+        panner.pan.value = 0;
+
+        source.connect(panner).connect(audioContext.destination);
+    });
+
+    console.log('Panning stopped');
+}
 
 const settingsButton = document.getElementById("settingsButton");
 const settingsModal = document.getElementById("settingsModal");
@@ -973,56 +1028,3 @@ document.getElementById('closeSettingsModal').addEventListener('click', function
     settingsModal.style.display = "none";
 
 });
-
-// let isPanningEnabled = true; // Flag to track panning state
-// let audioContext = new AudioContext();
-
-
-// function stopPanning() {
-//     isPanningEnabled = false; // Disable panning
-
-//     // Loop through all remote videos and stop their panning effect
-//     const remoteVideos = document.querySelectorAll('.video-container video');
-//     remoteVideos.forEach(remoteVideo => {
-//         audioContext = new AudioContext();
-//         const source = audioContext.createMediaStreamSource(remoteVideo.srcObject);
-//         const panner = audioContext.createStereoPanner();
-//         panner.pan.value = 0; // Set pan to neutral (center)
-
-//         source.connect(panner).connect(audioContext.destination); // Reconnect audio without panning
-//     });
-
-//     console.log('Panning stopped');
-// }
-
-
-
-// function startPanning() {
-//     isPanningEnabled = true; // Enable panning
-
-//     // Loop through all remote videos and stop their panning effect
-//     const remoteVideos = document.querySelectorAll('.video-container video');
-//     remoteVideos.forEach(remoteVideo => {
-//         const source = audioContext.createMediaStreamSource(remoteVideo.srcObject);
-//         const panner = audioContext.createStereoPanner();
-//         panner.pan.value = -1000000; // Set pan to neutral (center)
-
-//         source.connect(panner).connect(audioContext.destination); // Reconnect audio without panning
-//     });
-
-//     console.log('Panning started');
-// }
-
-// const stopPanningButton = document.getElementById('stopPanningButton');
-// stopPanningButton.addEventListener('click', () => {
-//     if (isPanningEnabled) {
-//         stopPanning(); // Call function to stop panning
-//         document.getElementById('stopPanningButton').innerHTML = '<i class="fa-solid fa-play"></i><span>Start Panning</span>';
-//     } else {
-//         // Optionally implement the function to start panning again
-//         startPanning();
-//         document.getElementById('stopPanningButton').innerHTML = '<i class="fa-solid fa-stop"></i><span>Stop Panning</span>';
-
-//     }
-// });
-
