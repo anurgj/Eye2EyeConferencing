@@ -719,6 +719,7 @@ async function createPeerConnection(socketId, isInitiator) {
     peerConnections[socketId] = new RTCPeerConnection();
 
     localStream1.getTracks().forEach(track => peerConnections[socketId].addTrack(track, localStream1));
+    applyLowLatencySenderParams(peerConnections[socketId]);
 
     peerConnections[socketId].ontrack = async (event) => {
         const originalStream = event.streams[0];
@@ -788,6 +789,28 @@ async function createPeerConnection(socketId, isInitiator) {
     }
 }
 
+async function applyLowLatencySenderParams(peerConnection) {
+    const senders = peerConnection.getSenders();
+    for (const sender of senders) {
+        if (!sender.track || sender.track.kind !== 'video') continue;
+
+        const params = sender.getParameters();
+        if (!params.encodings || params.encodings.length === 0) {
+            params.encodings = [{}];
+        }
+
+        params.degradationPreference = 'maintain-framerate';
+        params.encodings[0].maxBitrate = 2_000_000; // 2 Mbps target for 720p30
+        params.encodings[0].maxFramerate = 30;
+
+        try {
+            await sender.setParameters(params);
+            console.log('Applied low-latency sender params');
+        } catch (e) {
+            console.warn('Failed to apply sender params', e);
+        }
+    }
+}
 async function createDelayedAudioStream(audioTrack, delaySeconds = 2) {
     const audioContext = new AudioContext();
 
