@@ -526,7 +526,7 @@ function joinRoom() {
 }
 
 function leaveMeeting() {
-    window.location.href = 'waiting-room.html';
+    window.location.href = '/one-camera/waiting-room.html';
 }
 
 function muteUnmute() {
