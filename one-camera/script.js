@@ -19,12 +19,7 @@ let isStream1Primary = true;
 const pathSegments = window.location.pathname.split('/');
 const lastSegment = pathSegments[pathSegments.length - 1];
 
-let delaySetting = 0.5;
-
-if (!isNaN(lastSegment)) {
-    delaySetting = parseInt(lastSegment, 10) / 1000;
-}
-
+let delaySetting = 0;
 console.log("Delay set to", delaySetting, "seconds");
 
 
@@ -264,8 +259,19 @@ async function initializeCameraStreams() {
         }
 
         const constraints1 = {
-            video: selectedCameras.left ? { deviceId: selectedCameras.left } : true,
-            audio: { echoCancellation: true }
+            video: selectedCameras.left
+                ? {
+                    deviceId: selectedCameras.left,
+                    width: { min: 1280, ideal: 1280 },
+                    height: { min: 720, ideal: 720 },
+                    frameRate: { min: 30, ideal: 30, max: 30 }
+                }
+                : {
+                    width: { min: 1280, ideal: 1280 },
+                    height: { min: 720, ideal: 720 },
+                    frameRate: { min: 30, ideal: 30, max: 30 }
+                },
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
         };
 
         localStream1 = await navigator.mediaDevices.getUserMedia(constraints1);
@@ -274,11 +280,11 @@ async function initializeCameraStreams() {
 
         localVideo1.srcObject = localStream1;
 
-        // Set contentHint for screenshare-like behavior
+        // Prefer low-latency camera tuning for live video
         const videoTrack = localStream1.getVideoTracks()[0];
         if (videoTrack) {
-            videoTrack.contentHint = 'detail';
-            console.log('Set video track contentHint to "detail" to simulate screenshare.');
+            videoTrack.contentHint = 'motion';
+            console.log('Set video track contentHint to "motion" for live video.');
         }
 
         console.log('Camera streams initialized successfully');
@@ -721,8 +727,6 @@ async function createPeerConnection(socketId, isInitiator) {
 
 
       
-        const delayedVideoStream = await createDelayedVideoStream(videoTrack, delaySetting);
-      
         let remoteVideo = document.getElementById(`remoteVideo-${socketId}`);
       
         if (!remoteVideo) {
@@ -748,46 +752,20 @@ async function createPeerConnection(socketId, isInitiator) {
           videoGrid.appendChild(videoContainer);
         }
 
-        const jitterBufferMs = delaySetting * 1000;
-        console.log(`Setting jitterBufferTarget to ${jitterBufferMs}ms for incoming stream from ${socketId}`);
-        
-        const receivers = peerConnections[socketId].getReceivers();
-        for (const receiver of receivers) {
-            if (receiver.track === event.track) {
-                // The jitterBufferTarget attribute is only available on RTCRtpReceiver
-                try {
-                    // jitterBufferTarget is a hint, not a strict command
-                    receiver.jitterBufferTarget = jitterBufferMs;
-                } catch (e) {
-                    console.warn('Could not set jitterBufferTarget. This browser may not support it.', e);
-                }
-                break;
-            }
-        }
-      
-        const delayedStream = new MediaStream();
-        delayedVideoStream.getVideoTracks().forEach(track => delayedStream.addTrack(track));
-        delayedStream.addTrack(audioTrack)
-        
-        remoteVideo.srcObject = delayedStream;
+        remoteVideo.srcObject = originalStream;
 
         remoteVideo.muted = true;
       
         connectAudio.style.display = 'flex';
         connectAudio.onclick = async () => {
           try {
-            
             const remoteAudioTrack = originalStream.getAudioTracks()[0];
-            const delayedAudioStream = await createDelayedAudioStream(remoteAudioTrack, delaySetting);
-            
             const audioElement = new Audio();
-            audioElement.srcObject = delayedAudioStream;
-            audioElement.play();
-            
-            
-            console.log('Delayed audio started');
+            audioElement.srcObject = new MediaStream([remoteAudioTrack]);
+            await audioElement.play();
+            console.log('Remote audio started');
           } catch (e) {
-            console.error('Failed to play delayed audio:', e);
+            console.error('Failed to play remote audio:', e);
           }
         };
       };
