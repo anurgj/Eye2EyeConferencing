@@ -800,7 +800,7 @@ async function applyLowLatencySenderParams(peerConnection) {
         }
 
         params.degradationPreference = 'maintain-framerate';
-        params.encodings[0].maxBitrate = 2_000_000; // 2 Mbps target for 720p30
+        params.encodings[0].maxBitrate = 1_500_000; // 1.5 Mbps target for 720p30
         params.encodings[0].maxFramerate = 30;
 
         try {
