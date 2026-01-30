@@ -262,13 +262,13 @@ async function initializeCameraStreams() {
             video: selectedCameras.left
                 ? {
                     deviceId: selectedCameras.left,
-                    width: { min: 1280, ideal: 1280 },
-                    height: { min: 720, ideal: 720 },
+                    width: { min: 640, ideal: 640 },
+                    height: { min: 360, ideal: 360 },
                     frameRate: { min: 30, ideal: 30, max: 30 }
                 }
                 : {
-                    width: { min: 1280, ideal: 1280 },
-                    height: { min: 720, ideal: 720 },
+                    width: { min: 640, ideal: 640 },
+                    height: { min: 360, ideal: 360 },
                     frameRate: { min: 30, ideal: 30, max: 30 }
                 },
             audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
