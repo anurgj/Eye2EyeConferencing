@@ -69,6 +69,23 @@ leaveMeetingButton.onclick = leaveMeeting;
 let availableCameras = [];
 let selectedCameras = { left: null, right: null };
 let currentClickedVideo = null;
+const TARGET_VIDEO_WIDTH = 1920;
+const TARGET_VIDEO_HEIGHT = 1080;
+const TARGET_VIDEO_FPS = 60;
+
+function buildVideoConstraints(deviceId = null) {
+    const videoConstraints = {
+        width: { ideal: TARGET_VIDEO_WIDTH },
+        height: { ideal: TARGET_VIDEO_HEIGHT },
+        frameRate: { ideal: TARGET_VIDEO_FPS, max: TARGET_VIDEO_FPS }
+    };
+
+    if (deviceId) {
+        videoConstraints.deviceId = { exact: deviceId };
+    }
+
+    return videoConstraints;
+}
 
 async function refreshAvailableCameras() {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -290,12 +307,12 @@ async function initializeCameraStreams() {
         }
 
         const constraints1 = {
-            video: selectedCameras.left ? { deviceId: selectedCameras.left } : true,
+            video: buildVideoConstraints(selectedCameras.left),
             audio: { echoCancellation: true }
         };
 
         const constraints2 = {
-            video: selectedCameras.right ? { deviceId: selectedCameras.right } : true,
+            video: buildVideoConstraints(selectedCameras.right),
             audio: { echoCancellation: true }
         };
 
@@ -319,11 +336,11 @@ async function initializeCameraStreams() {
             normalizeSelectedCameras();
             try {
                 localStream1 = await navigator.mediaDevices.getUserMedia({
-                    video: true,
+                    video: buildVideoConstraints(),
                     audio: false
                 });
                 localStream2 = await navigator.mediaDevices.getUserMedia({
-                    video: true,
+                    video: buildVideoConstraints(),
                     audio: false
                 });
 

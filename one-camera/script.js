@@ -48,6 +48,23 @@ leaveMeetingButton.onclick = leaveMeeting;
 let availableCameras = [];
 let selectedCameras = { left: null, right: null };
 let currentClickedVideo = null;
+const TARGET_VIDEO_WIDTH = 1920;
+const TARGET_VIDEO_HEIGHT = 1080;
+const TARGET_VIDEO_FPS = 60;
+
+function buildVideoConstraints(deviceId = null) {
+    const videoConstraints = {
+        width: { ideal: TARGET_VIDEO_WIDTH },
+        height: { ideal: TARGET_VIDEO_HEIGHT },
+        frameRate: { ideal: TARGET_VIDEO_FPS, max: TARGET_VIDEO_FPS }
+    };
+
+    if (deviceId) {
+        videoConstraints.deviceId = { exact: deviceId };
+    }
+
+    return videoConstraints;
+}
 
 async function refreshAvailableCameras() {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -269,18 +286,7 @@ async function initializeCameraStreams() {
         }
 
         const constraints1 = {
-            video: selectedCameras.left
-                ? {
-                    deviceId: selectedCameras.left,
-                    width: { min: 640, ideal: 640 },
-                    height: { min: 360, ideal: 360 },
-                    frameRate: { min: 30, ideal: 30, max: 30 }
-                }
-                : {
-                    width: { min: 640, ideal: 640 },
-                    height: { min: 360, ideal: 360 },
-                    frameRate: { min: 30, ideal: 30, max: 30 }
-                },
+            video: buildVideoConstraints(selectedCameras.left),
             audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
         };
 
@@ -309,7 +315,7 @@ async function initializeCameraStreams() {
                 await refreshAvailableCameras();
                 normalizeSelectedCameras();
                 localStream1 = await navigator.mediaDevices.getUserMedia({
-                    video: true,
+                    video: buildVideoConstraints(),
                     audio: false
                 });
                 const localVideo1 = document.getElementById('localVideo1');
@@ -833,8 +839,8 @@ async function applyLowLatencySenderParams(peerConnection) {
         }
 
         params.degradationPreference = 'maintain-framerate';
-        params.encodings[0].maxBitrate = 1_500_000; // 1.5 Mbps target for 720p30
-        params.encodings[0].maxFramerate = 30;
+        params.encodings[0].maxBitrate = 8_000_000;
+        params.encodings[0].maxFramerate = TARGET_VIDEO_FPS;
 
         try {
             await sender.setParameters(params);
