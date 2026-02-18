@@ -49,6 +49,25 @@ let availableCameras = [];
 let selectedCameras = { left: null, right: null };
 let currentClickedVideo = null;
 
+async function refreshAvailableCameras() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    availableCameras = devices.filter(device => device.kind === 'videoinput');
+    return availableCameras;
+}
+
+function normalizeSelectedCameras() {
+    const cameraIds = new Set(availableCameras.map(camera => camera.deviceId));
+    const firstCamera = availableCameras[0]?.deviceId;
+
+    if (!selectedCameras.left || !cameraIds.has(selectedCameras.left)) {
+        selectedCameras.left = firstCamera;
+    }
+
+    if (!selectedCameras.right || !cameraIds.has(selectedCameras.right)) {
+        selectedCameras.right = firstCamera;
+    }
+}
+
 const cameraSelectionModalHTML = `
 <div id="cameraSelectionModal" class="modal hidden">
     <div class="modal-content">
@@ -120,21 +139,9 @@ const cameraModalCSS = `
 
 async function start() {
     try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        availableCameras = devices.filter(device => device.kind === 'videoinput');
-
+        await refreshAvailableCameras();
         console.log('Available cameras:', availableCameras);
-
-        if (availableCameras.length >= 2) {
-            selectedCameras.left = availableCameras[0].deviceId;
-            selectedCameras.right = availableCameras[1].deviceId;
-        } else if (availableCameras.length === 1) {
-            selectedCameras.left = availableCameras[0].deviceId;
-            selectedCameras.right = availableCameras[0].deviceId;
-        } else {
-            selectedCameras.left = undefined;
-            selectedCameras.right = undefined;
-        }
+        normalizeSelectedCameras();
 
         await initializeCameraStreams();
 
@@ -251,6 +258,9 @@ document.getElementById('outputDeviceModal').addEventListener('click', (e) => {
 
 async function initializeCameraStreams() {
     try {
+        await refreshAvailableCameras();
+        normalizeSelectedCameras();
+
         if (localStream1) {
             localStream1.getTracks().forEach(track => track.stop());
         }
@@ -292,6 +302,26 @@ async function initializeCameraStreams() {
         updatePeerConnections();
 
     } catch (e) {
+        if (e && (e.name === 'NotFoundError' || e.name === 'OverconstrainedError')) {
+            console.warn('Camera+mic request failed, retrying with camera-only stream.', e);
+            selectedCameras.left = null;
+            try {
+                await refreshAvailableCameras();
+                normalizeSelectedCameras();
+                localStream1 = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+                const localVideo1 = document.getElementById('localVideo1');
+                if (localVideo1) {
+                    localVideo1.srcObject = localStream1;
+                }
+                updatePeerConnections();
+                return;
+            } catch (fallbackError) {
+                console.error('Fallback camera initialization failed:', fallbackError);
+            }
+        }
         console.error('Error initializing camera streams:', e);
     }
 }
@@ -331,6 +361,9 @@ function insertCameraModal() {
 }
 
 async function openCameraSelectionModal() {
+    await refreshAvailableCameras();
+    normalizeSelectedCameras();
+
     let modal = document.getElementById('cameraSelectionModal');
     if (!modal) {
         console.log('Modal not found, inserting it now...');
@@ -1010,22 +1043,26 @@ function stopPanning() {
     console.log('Panning stopped');
 }
 
-const settingsButton = document.getElementById("settingsButton");
+const settingsButton = document.getElementById("settingsButton") || document.getElementById("settings_block");
 const settingsModal = document.getElementById("settingsModal");
 
-settingsButton.addEventListener("click", () => {
-    if (settingsModal.classList.contains("hidden")) {
-        settingsModal.classList.remove("hidden");
-        settingsModal.style.display = "block";
-    } else {
-        settingsModal.classList.add("hidden");
+if (settingsButton && settingsModal) {
+    settingsButton.addEventListener("click", () => {
+        if (settingsModal.classList.contains("hidden")) {
+            settingsModal.classList.remove("hidden");
+            settingsModal.style.display = "block";
+        } else {
+            settingsModal.classList.add("hidden");
+            settingsModal.style.display = "none";
+        }
+    });
+}
+
+
+const closeSettingsModalButton = document.getElementById('closeSettingsModal');
+if (closeSettingsModalButton && settingsModal) {
+    closeSettingsModalButton.addEventListener('click', function () {
+        settingsModal.classList.add('hidden');
         settingsModal.style.display = "none";
-    }
-});
-
-
-document.getElementById('closeSettingsModal').addEventListener('click', function () {
-    settingsModal.classList.add('hidden');
-    settingsModal.style.display = "none";
-
-});
+    });
+}

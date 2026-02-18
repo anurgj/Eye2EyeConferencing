@@ -70,6 +70,26 @@ let availableCameras = [];
 let selectedCameras = { left: null, right: null };
 let currentClickedVideo = null;
 
+async function refreshAvailableCameras() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    availableCameras = devices.filter(device => device.kind === 'videoinput');
+    return availableCameras;
+}
+
+function normalizeSelectedCameras() {
+    const cameraIds = new Set(availableCameras.map(camera => camera.deviceId));
+    const firstCamera = availableCameras[0]?.deviceId;
+    const secondCamera = availableCameras[1]?.deviceId || firstCamera;
+
+    if (!selectedCameras.left || !cameraIds.has(selectedCameras.left)) {
+        selectedCameras.left = firstCamera;
+    }
+
+    if (!selectedCameras.right || !cameraIds.has(selectedCameras.right)) {
+        selectedCameras.right = secondCamera;
+    }
+}
+
 const cameraSelectionModalHTML = `
 <div id="cameraSelectionModal" class="modal hidden">
     <div class="modal-content">
@@ -140,21 +160,9 @@ const cameraModalCSS = `
 
 async function start() {
     try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        availableCameras = devices.filter(device => device.kind === 'videoinput');
-
+        await refreshAvailableCameras();
         console.log('Available cameras:', availableCameras);
-
-        if (availableCameras.length >= 2) {
-            selectedCameras.left = availableCameras[0].deviceId;
-            selectedCameras.right = availableCameras[1].deviceId;
-        } else if (availableCameras.length === 1) {
-            selectedCameras.left = availableCameras[0].deviceId;
-            selectedCameras.right = availableCameras[0].deviceId;
-        } else {
-            selectedCameras.left = undefined;
-            selectedCameras.right = undefined;
-        }
+        normalizeSelectedCameras();
 
         await initializeCameraStreams();
 
@@ -271,6 +279,9 @@ document.getElementById('outputDeviceModal').addEventListener('click', (e) => {
 
 async function initializeCameraStreams() {
     try {
+        await refreshAvailableCameras();
+        normalizeSelectedCameras();
+
         if (localStream1) {
             localStream1.getTracks().forEach(track => track.stop());
         }
@@ -302,6 +313,34 @@ async function initializeCameraStreams() {
         updatePeerConnections();
 
     } catch (e) {
+        if (e && (e.name === 'NotFoundError' || e.name === 'OverconstrainedError')) {
+            console.warn('Camera+mic request failed, retrying with camera-only streams.', e);
+            await refreshAvailableCameras();
+            normalizeSelectedCameras();
+            try {
+                localStream1 = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+                localStream2 = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+
+                const localVideo1 = document.getElementById('localVideo1');
+                const localVideo2 = document.getElementById('localVideo2');
+                if (localVideo1) {
+                    localVideo1.srcObject = localStream1;
+                }
+                if (localVideo2) {
+                    localVideo2.srcObject = localStream2;
+                }
+                updatePeerConnections();
+                return;
+            } catch (fallbackError) {
+                console.error('Fallback camera initialization failed:', fallbackError);
+            }
+        }
         console.error('Error initializing camera streams:', e);
     }
 }
@@ -355,6 +394,9 @@ function insertCameraModal() {
 }
 
 async function openCameraSelectionModal() {
+    await refreshAvailableCameras();
+    normalizeSelectedCameras();
+
     const modal = document.getElementById('cameraSelectionModal');
     const cameraList = document.getElementById('cameraList');
 
@@ -741,15 +783,18 @@ if (isParamOn) {
 
 
 const panCheckbox = document.getElementById('panCheckbox');
+const outputDeviceModal = document.getElementById('outputDeviceModal');
 
-document.getElementById('outputDeviceModal').addEventListener('transitionend', () => {
-    panCheckbox.checked = panAmount == 1;
-});
+if (panCheckbox && outputDeviceModal) {
+    outputDeviceModal.addEventListener('transitionend', () => {
+        panCheckbox.checked = panAmount == 1;
+    });
 
-panCheckbox.addEventListener('change', () => {
-    panAmount = panCheckbox.checked ? 1 : 0;
-    console.log('panAmount updated to:', panAmount);
-});
+    panCheckbox.addEventListener('change', () => {
+        panAmount = panCheckbox.checked ? 1 : 0;
+        console.log('panAmount updated to:', panAmount);
+    });
+}
 
 
 async function createPeerConnection(socketId, isInitiator) {
@@ -954,25 +999,29 @@ document.getElementById('closeHelpModal').addEventListener('click', function () 
 
 });
 
-const settingsButton = document.getElementById("settingsButton");
+const settingsButton = document.getElementById("settingsButton") || document.getElementById("settings_block");
 const settingsModal = document.getElementById("settingsModal");
 
-settingsButton.addEventListener("click", () => {
-    if (settingsModal.classList.contains("hidden")) {
-        settingsModal.classList.remove("hidden");
-        settingsModal.style.display = "block";
-    } else {
-        settingsModal.classList.add("hidden");
+if (settingsButton && settingsModal) {
+    settingsButton.addEventListener("click", () => {
+        if (settingsModal.classList.contains("hidden")) {
+            settingsModal.classList.remove("hidden");
+            settingsModal.style.display = "block";
+        } else {
+            settingsModal.classList.add("hidden");
+            settingsModal.style.display = "none";
+        }
+    });
+}
+
+
+const closeSettingsModalButton = document.getElementById('closeSettingsModal');
+if (closeSettingsModalButton && settingsModal) {
+    closeSettingsModalButton.addEventListener('click', function () {
+        settingsModal.classList.add('hidden');
         settingsModal.style.display = "none";
-    }
-});
-
-
-document.getElementById('closeSettingsModal').addEventListener('click', function () {
-    settingsModal.classList.add('hidden');
-    settingsModal.style.display = "none";
-
-});
+    });
+}
 
 // let isPanningEnabled = true; // Flag to track panning state
 // let audioContext = new AudioContext();
@@ -1025,4 +1074,3 @@ document.getElementById('closeSettingsModal').addEventListener('click', function
 
 //     }
 // });
-
